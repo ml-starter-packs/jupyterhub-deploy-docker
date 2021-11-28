@@ -4,74 +4,148 @@
 
 # Configuration file for JupyterHub
 import os
+import sys
 from subprocess import check_call
 pwd = os.path.dirname(__file__)
 c = get_config()
-hub_name = os.environ['HUB_NAME']
 
-# Spawner dropdown menu?
-enable_options=False
+
+### Helper scripts
+def create_group_map(filename='userlist') -> 'Dict[str, List[str]]':
+    """
+    Parses text file to assign users to groups and creates
+    a dictionary where keys are usernames and values are the list
+    of group names to which they belong.
+
+    You can use group membership to define policies for shared volumes
+    or use an `admin` group to determine which users get root permissions.
+
+    Note that updates to the userlist require restarts for the jupyerhub to
+    take effect. This can be inconvenient as an interruption to existing users.
+    
+    For this reason, we suggest not using `userlist` to manage
+    shared volumes but rather setting up an external filesystem on the network
+    and managing access through that (give users instructions on how to mount them
+    as folders inside their containerized environments), or perhaps opt for
+    object storage like s3 and distribute user-keys / credentials and rely on
+    CLI or programmatic file access.
+    """
+    group_map = {}
+    # TODO: check if file exists and return empty dictionary if it does not.
+    with open(os.path.join(pwd, filename)) as f:
+        for line in f:
+            if not line:
+                continue
+            # each line of file is user: group_1 group_2 ...
+            parts = line.split()
+            # in case of newline at the end of userlist file
+            if len(parts) == 0:
+                continue
+            user_name = parts[0]
+            group_map[user_name] = []
+
+            for i in range(1,len(parts)):
+                group_name = parts.pop()
+                group_map[user_name].append(group_name)
+    return group_map
+
+
+def create_volume_mount(group_id='group', mode='ro', nb_user='jovyan') -> 'Dict[str, Dict[str, str]]':
+    volumes = {}
+    volume_name = f'shared-{group_id}'
+    volume_config = {
+        'bind': f'/home/{nb_user}/{volume_name}',
+        'mode': mode,
+    }
+    volumes[volume_name] = volume_config
+    return volumes
+
+
 
 # We rely on environment variables to configure JupyterHub so that we
 # avoid having to rebuild the JupyterHub container every time we change a
 # configuration parameter.
+HUB_NAME = os.environ['HUB_NAME']
+DEFAULT_IMAGE = f'{HUB_NAME}-user'
+GROUP_MAP = create_group_map('userlist')
+
+# Allow admin users to log into other single-user servers (e.g. for debugging, testing)?  As a courtesy, you should make sure your users know if admin_access is enabled.
+c.JupyterHub.admin_access = True
+
+## Allow named single-user servers per user
+c.JupyterHub.allow_named_servers = True
+
+# Allow admin to access other users' containers
+c.NotebookApp.allow_remote_access = True
+
+# Optional list of images
+ENABLE_DROPDOWN = True
+IMAGE_WHITELIST= {
+    'default': f"{HUB_NAME}-user",
+    'scipy-notebook': "jupyter/scipy-notebook", 
+    'tensorflow-notebook': "jupyter/tensorflow-notebook",
+    'r-notebook': 'jupyter/r-notebook',
+    'base-notebook': "jupyter/base-notebook",
+}
+
 
 # Spawn single-user servers as Docker containers
-#c.JupyterHub.spawner_class = spawner = 'dockerspawner.DockerSpawner'
 from dockerspawner import DockerSpawner
 class MyDockerSpawner(DockerSpawner):
-    group_map = {}
-    with open(os.path.join(pwd, 'userlist')) as f:
-        for line in f:
-            if not line:
-                continue
-            parts = line.split()
-            # in case of newline at the end of userlist file
-            if len(parts) >= 1:
-                user_name = parts[0]
-                group_map[user_name] = []
-
-                for i in range(1,len(parts)):
-                    group_id = parts.pop()
-                    group_map[user_name].append(group_id)
     def start(self):
-        if self.user.name in self.group_map:
-            group_list = self.group_map[self.user.name]
-            # add team volume to volumes
-            for group_id in group_list: # admins in userlist get to write files.
-                if group_id != 'admin':
-                    if 'admin' in group_list: 
-                        self.volumes['shared-{}'.format(group_id)] = \
-                            { 'bind': '/home/jovyan/%s'%(group_id),
-                                'mode': 'rw' } # or ro for read-only
-                    else: # this "shared-" is part of the naming convention
-                        self.volumes['shared-{}'.format(group_id)] = \
-                            {'bind': '/home/jovyan/%s'%(group_id),
-                                'mode': 'ro' } # or rw for write (can cause conflicts)
-                else: # if admin is one of the groups in userlist, mount the following:
-                    self.volumes['%s/userlist'%(os.environ['HUB_LOC'])] = \
-                        { 'bind': '/home/jovyan/userlist', 'mode': 'rw' }
-                    self.volumes['%s/jupyterhub_config.py'%(os.environ['HUB_LOC'])] = \
-                        { 'bind': '/home/jovyan/jupyterhub_config.py', 'mode': 'rw' }
-        self.environment['JUPYTER_ENABLE_LAB'] = 'yes'
+        group_list = GROUP_MAP.get(self.user.name, [])
+        self.update_volumes(group_list)
+        # if 'admin' in group_list:
+        #     self.mount_config_files()
+        #     self.grant_sudo()
+        # self.limit_resources()
+        self.enable_lab()
+        self.grant_sudo()  # grants sudo to all users!!!
         return super().start()
 
+    def grant_sudo(self):
+        """
+        Grants sudo permission to current user being spawned.
+        """
+        self.environment['GRANT_SUDO'] = "1"
+        self.extra_create_kwargs = {'user': 'root'}
+    
+    def enable_lab(self):
+        """
+        Sets Jupyterlab as the default environment which users see.
+        """
+        self.environment['JUPYTER_ENABLE_LAB'] = 'yes'
+        self.default_url = '/lab'
+
+    def update_volumes(self, group_list):
+        for group_id in group_list:
+            mode = 'rw' if 'admin' in group_list else 'ro'
+            volume = create_volume_mount(group_id, mode, 'jovyan') 
+            self.volumes.update(volume)
+
+    def limit_resources(self, mem_limit='8G', cpu_limit=1.0):
+        self.mem_limit = mem_limit
+        self.cpu_limit = cpu_limit
+
+    def mount_config_files(self, username='jovyan'):
+        """
+        Allows editing of `jupyterhub_config.py` + `userlist` from
+        within the container but relies on using `Shut Down` from
+        the admin panel + docker automatically restarting the hub
+        in order for changes to take effect. If you make a mistake,
+        your hub will become unavailable and you will need to edit
+        it by logging into the server hosting the jupyterhub app.
+        """
+        self.volumes['%s/userlist'%(os.environ['HUB_LOC'])] = \
+            { 'bind': f'/home/{username}/userlist', 'mode': 'rw' }
+        self.volumes['%s/jupyterhub_config.py'%(os.environ['HUB_LOC'])] = \
+            { 'bind': f'/home/{username}/jupyterhub_config.py', 'mode': 'rw' }
+
 c.JupyterHub.spawner_class = MyDockerSpawner
-
-# define some task to do on startup
-
-# Spawn containers from this image (or a whitelist)
-#c.DockerSpawner.image = "jupyter/datascience-notebook:7254cdcfa22b"
-c.DockerSpawner.image = '%s-user'%hub_name
-c.DockerSpawner.name_template = '{imagename}-{username}'
-if enable_options:
-    # if whitelist enabled, the .container_image will be ignored in favor of the options below:
-    c.DockerSpawner.image_whitelist = {'default': c.DockerSpawner.image , 
-                                     'scipy-notebook': "jupyter/scipy-notebook", 
-                                     'datascience-notebook': "jupyter/datascience-notebook",
-                                     'r-notebook': 'jupyter/r-notebook',
-                                     'base-notebook': "jupyter/base-notebook",
-                                     'RStudio': 'rstudio'}
+c.DockerSpawner.image = '%s-user'%HUB_NAME
+c.DockerSpawner.name_template = '%s-{username}-{servername}-{imagename}'%HUB_NAME
+if ENABLE_DROPDOWN:
+    c.DockerSpawner.allowed_images = IMAGE_WHITELIST
 
 # JupyterHub requires a single-user instance of the Notebook server, so we
 # default to using the `start-singleuser.sh` script included in the
@@ -81,12 +155,8 @@ if enable_options:
 spawn_cmd = os.environ.get('DOCKER_SPAWN_CMD', "start-singleuser.sh")
 c.DockerSpawner.extra_create_kwargs.update({ 'command': spawn_cmd })
 
-# Memory limit
-c.Spawner.mem_limit = '4G'  # RAM limit
-c.Spawner.cpu_limit = 0.0001
-
 # Connect containers to this Docker network
-network_name = '%s-network'%hub_name
+network_name = '%s-network'%HUB_NAME
 c.DockerSpawner.use_internal_ip = True
 c.DockerSpawner.network_name = network_name
 # Pass the network name as argument to spawned containers
@@ -104,37 +174,31 @@ c.DockerSpawner.volumes = { 'hub-user-{username}': notebook_dir }
 
 # volume_driver is no longer a keyword argument to create_container()
 # c.DockerSpawner.extra_create_kwargs.update({ 'volume_driver': 'local' })
+
 # Remove containers once they are stopped
-c.DockerSpawner.remove_containers = True
+c.DockerSpawner.remove = True
+
 # For debugging arguments passed to spawned containers
 c.DockerSpawner.debug = True
 
 # User containers will access hub by container name on the Docker network
-c.JupyterHub.hub_ip = hub_name
+c.JupyterHub.hub_ip = HUB_NAME
 # The hub will be hosted at example.com/HUB_NAME/ 
-c.JupyterHub.base_url = u'/%s/'%hub_name
+c.JupyterHub.base_url = u'/%s/'%HUB_NAME
 #c.JupyterHub.hub_port = 8001
 
 ## Authentication 
 # Whitlelist users and admins
-c.Authenticator.whitelist = whitelist = set()
+c.Authenticator.allowed_users = whitelist = set()
 c.Authenticator.admin_users = admin = set()
 
 # add default user so that first-time log in is easy.
 admin.add('hub-admin')
-
-with open(os.path.join(pwd, 'userlist')) as f:
-    for line in f:
-        if not line:
-            continue
-        parts = line.split()
-        # in case of newline at the end of userlist file
-        if len(parts) >= 1:
-            name = parts[0]
-            whitelist.add(name)
-            if len(parts) > 1 and parts[1] == 'admin':
-                admin.add(name)
-
+for name in GROUP_MAP:
+    if 'admin' in GROUP_MAP[name]:
+        admin.add(name)
+    else:
+        whitelist.add(name)
 
 # Authenticate users with GitHub OAuth
 # c.JupyterHub.authenticator_class = 'oauthenticator.GitHubOAuthenticator'
@@ -166,17 +230,18 @@ c.JupyterHub.cookie_secret_file = os.path.join(data_dir,
 c.JupyterHub.db_url = 'postgresql://postgres:{password}@{host}/{db}'.format(
     host=os.environ['POSTGRES_HOST'],
     password=os.environ['POSTGRES_PASSWORD'],
-    db=hub_name,
+    db=HUB_NAME,
 )
 
-# Allow admin users to log into other single-user servers (e.g. for debugging, testing)?  As a courtesy, you should make sure your users know if admin_access is enabled.
-c.JupyterHub.admin_access = True 
-
-# Run script to automatically stop idle single-user servers as a jupyterhub service.
+# https://github.com/jupyterhub/jupyterhub-idle-culler
 c.JupyterHub.services = [
     {
-        'name': 'cull_idle',
-        'admin': True,
-        'command': 'python /srv/jupyterhub/cull_idle_servers.py --timeout=3600'.split(),
-    },
+        "name": "jupyterhub-idle-culler-service",
+        "command": [
+            sys.executable,
+            "-m", "jupyterhub_idle_culler",
+            "--timeout=3600",
+        ],
+        "admin": True,
+    }
 ]

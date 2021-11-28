@@ -56,7 +56,7 @@ notebook_image: pull singleuser/Dockerfile
 		--build-arg DOCKER_NOTEBOOK_IMAGE=$(DOCKER_NOTEBOOK_IMAGE) \
 		singleuser
 
-build: check-files network volumes
+build: check-files network volumes secrets/oauth.env secrets/postgres.env
 	docker-compose build
 
 .PHONY: network volumes check-files pull notebook_image build
