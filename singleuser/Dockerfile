@@ -53,6 +53,7 @@ COPY install_geckodriver.sh /tmp/
 ## CONFIG
 # Copy over config which creates launcher icons in jupyterlab
 COPY jupyter_notebook_config.py /home/jovyan/.jupyter/
+COPY ./jupyterlab_settings /home/jovyan/.jupyter/lab/user-settings/@jupyterlab
 
 # USER SETTINGS
 RUN echo "export EDITOR=/usr/bin/vim" >> /home/$NB_USER/.bashrc
