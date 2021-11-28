@@ -50,10 +50,15 @@ COPY install_monitoring.sh /tmp/
 COPY install_hugo.sh /tmp/
 COPY install_geckodriver.sh /tmp/
 
+USER root
 ## CONFIG
 # Copy over config which creates launcher icons in jupyterlab
 COPY jupyter_notebook_config.py /home/jovyan/.jupyter/
-COPY ./jupyterlab_settings /home/jovyan/.jupyter/lab/user-settings/@jupyterlab
+RUN mkdir -p /home/$NB_USER/.jupyter/lab/workspaces/
+COPY ./jupyterlab_settings /home/$NB_USER/.jupyter/lab/user-settings/@jupyterlab
+RUN chmod -R 777 /home/$NB_USER/.jupyter/lab
+
+USER $NB_UID
 
 # USER SETTINGS
 RUN echo "export EDITOR=/usr/bin/vim" >> /home/$NB_USER/.bashrc
