@@ -3,3 +3,9 @@
 examples/
 internal/
 README.md
+setup.sh
+show_login.sh
+groups.sh
+jupyterhub_config.py
+LICENSE
+CONTRIBUTING.md
