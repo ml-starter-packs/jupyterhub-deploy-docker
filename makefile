@@ -2,6 +2,8 @@
 # Distributed under the terms of the Modified BSD License.
 
 include .env
+## the line below should only be commented out if you want to use `make login` AFTER the jupyterhub has been built.
+include secrets/oauth.env
 
 .DEFAULT_GOAL=build
 
@@ -47,7 +49,7 @@ userlist:
 #	cert_files=
 #endif
 
-check-files: userlist secrets/postgres.env 
+check-files: userlist secrets/postgres.env secrets/oauth.env
 
 pull:
 	docker pull $(DOCKER_NOTEBOOK_IMAGE)

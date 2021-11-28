@@ -201,19 +201,19 @@ for name in GROUP_MAP:
         whitelist.add(name)
 
 # Authenticate users with GitHub OAuth
-# c.JupyterHub.authenticator_class = 'oauthenticator.GitHubOAuthenticator'
-# c.GitHubOAuthenticator.oauth_callback_url = os.environ['OAUTH_CALLBACK_URL']
+c.JupyterHub.authenticator_class = 'oauthenticator.GitHubOAuthenticator'
+c.GitHubOAuthenticator.oauth_callback_url = os.environ['OAUTH_CALLBACK_URL']
 
 # Authenticate with thedataincubator/jupyterhub-hashauthenticator
-c.JupyterHub.authenticator_class = 'hashauthenticator.HashAuthenticator'
+##c.JupyterHub.authenticator_class = 'hashauthenticator.HashAuthenticator'
 # You can generate a good "secret key" by running `openssl rand -hex 32` in terminal.
 # it is recommended to do this from time-to-time to change passwords (including changing their length)
-c.HashAuthenticator.secret_key = os.environ['HASH_SECRET_KEY']  # Defaults to ''
-c.HashAuthenticator.password_length = int(os.environ['PASSWORD_LENGTH'])          # Defaults to 6
+##c.HashAuthenticator.secret_key = os.environ['HASH_SECRET_KEY']  # Defaults to ''
+##c.HashAuthenticator.password_length = int(os.environ['PASSWORD_LENGTH'])          # Defaults to 6
 # Can find your password by looking at `hashauthpw --length 10 [username] [key]`
 # If the `show_logins` option is set to `True`, a CSV file containing 
 #login names and passwords will be served (to admins only) at `/hub/login_list`. 
-c.HashAuthenticator.show_logins = True            # Optional, defaults to False
+##c.HashAuthenticator.show_logins = True            # Optional, defaults to False
 
 # TLS config
 #c.JupyterHub.port = 8000
