@@ -47,6 +47,8 @@ RUN /tmp/install_language_server.sh
 
 COPY install_monitoring.sh /tmp/
 # RUN /tmp/install_monitoring.sh
+COPY install_hugo.sh /tmp/
+COPY install_geckodriver.sh /tmp/
 
 ## CONFIG
 # Copy over config which creates launcher icons in jupyterlab
