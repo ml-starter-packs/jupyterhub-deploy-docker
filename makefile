@@ -13,10 +13,12 @@ volumes:
 	@docker volume inspect $(HUB_NAME)-db-data >/dev/null 2>&1 || docker volume create --name $(HUB_NAME)-db-data
 
 secrets/postgres.env:
+	@mkdir -p secrets/
 	@echo "Generating postgres password in $@"
 	@echo "POSTGRES_PASSWORD=$(shell openssl rand -hex 32)" > $@
 
 secrets/oauth.env:
+	@mkdir -p secrets/
 	@echo "Generating hash key in $@"
 	@echo "HASH_SECRET_KEY=$(shell openssl rand -hex 32)" > $@
 
