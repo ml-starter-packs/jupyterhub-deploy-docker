@@ -234,15 +234,17 @@ c.JupyterHub.db_url = 'postgresql://postgres:{password}@{host}/{db}'.format(
     db=HUB_NAME,
 )
 
+
 # https://github.com/jupyterhub/jupyterhub-idle-culler
-c.JupyterHub.services = [
-    {
-        "name": "jupyterhub-idle-culler-service",
-        "command": [
-            sys.executable,
-            "-m", "jupyterhub_idle_culler",
-            "--timeout=3600",
-        ],
-        "admin": True,
-    }
-]
+if os.environ['CULL_IDLE']:
+    c.JupyterHub.services = [
+        {
+            "name": "jupyterhub-idle-culler-service",
+            "command": [
+                sys.executable,
+                "-m", "jupyterhub_idle_culler",
+                "--timeout=3600",
+            ],
+            "admin": True,
+        }
+    ]
