@@ -4,7 +4,7 @@ ARG JUPYTERHUB_VERSION
 
 USER root
 RUN apt-get update && \
-apt-get install -y --no-install-recommends \
+	apt-get install -y --no-install-recommends \
 	dvipng \
 	fonts-lato \
 	fonts-dejavu \

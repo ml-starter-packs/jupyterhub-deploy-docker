@@ -1,34 +1,22 @@
-FROM jupyter/r-notebook
+FROM docker.io/jupyter/r-notebook:hub-1.5.0
 
 ###### R ENV #######
 USER root
 
 # R pre-requisites
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends \
-    fonts-dejavu \
-    unixodbc \
-    unixodbc-dev \
-    r-cran-rodbc \
-    gfortran \
-    gcc && \
-    rm -rf /var/lib/apt/lists/*
+	apt-get install -y --no-install-recommends \
+	fonts-dejavu \
+	unixodbc \
+	less \
+	unixodbc-dev \
+	r-cran-rodbc \
+	gfortran \
+	gcc && \
+	rm -rf /var/lib/apt/lists/*
 
 # Fix for devtools https://github.com/conda-forge/r-devtools-feedstock/issues/4
 RUN ln -s /bin/tar /bin/gtar
-
-
-# R pre-requisites
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends \
-    fonts-dejavu \
-    unixodbc \
-    unixodbc-dev \
-    r-cran-rodbc \
-    gfortran \
-    gcc && \
-    apt-get clean && rm -rf /var/lib/apt/lists/*
-
 
 USER $NB_UID
 # R packages
@@ -53,29 +41,32 @@ RUN conda install --quiet --yes \
     'unixodbc=2.3.*' \
     'r-tidymodels=0.1*'
 RUN \
-    conda clean --all -f -y && \
-    fix-permissions "${CONDA_DIR}" && \
-    fix-permissions "/home/${NB_USER}"
+	conda clean --all -f -y && \
+	fix-permissions "${CONDA_DIR}" && \
+	fix-permissions "/home/${NB_USER}"
 
 # Install e1071 R package (dependency of the caret R package)
 #RUN conda install --quiet --yes r-e1071
 
 
 # RStudio
-RUN python3 -m pip install jupyter-rsession-proxy
-RUN cd /tmp/ && \
-    git clone --depth 1 https://github.com/jupyterhub/jupyter-server-proxy && \
-    cd jupyter-server-proxy/jupyterlab-server-proxy && \
-    npm install && npm run build && jupyter labextension link . && \
-    npm run build && jupyter lab build
+RUN python3 -m pip install jupyter-rsession-proxy jupyter_server_proxy
+#RUN cd /tmp/ && \
+#	git clone --depth 1 https://github.com/jupyterhub/jupyter-server-proxy && \
+#	cd jupyter-server-proxy/jupyterlab-server-proxy && \
+#	npm install && npm run build && jupyter labextension link . && \
+#	npm run build && jupyter lab build
 
 
 # install rstudio-server
 USER root
-RUN apt-get update && \
-    curl --silent -L --fail https://download2.rstudio.org/server/bionic/amd64/rstudio-server-1.4.1103-amd64.deb > /tmp/rstudio.deb && \
-    apt-get install -y /tmp/rstudio.deb && \
-    rm /tmp/rstudio.deb
+# RUN apt-get install gdebi-core
+RUN apt-get -yqq update && \
+	curl --silent -L --fail https://download2.rstudio.org/server/bionic/amd64/rstudio-server-1.4.1106-amd64.deb > /tmp/rstudio.deb && \
+	apt-get install -y /tmp/rstudio.deb && \
+	rm /tmp/rstudio.deb && \
+	apt-get -qq purge && \
+	apt-get -qq clean
 
 ENV PATH=$PATH:/usr/lib/rstudio-server/bin
 
@@ -89,28 +80,27 @@ ENV PATH=$PATH:/usr/lib/rstudio-server/bin
 #		libssl1.0.0 \
 #		;
 
-#RUN apt-get install gdebi-core
-RUN curl --silent -L --fail https://download3.rstudio.org/ubuntu-14.04/x86_64/shiny-server-1.5.9.923-amd64.deb > /tmp/rshiny.deb && \
-    apt-get install -y /tmp/rshiny.deb && \
-    rm /tmp/rshiny.deb
+RUN curl https://download3.rstudio.org/ubuntu-14.04/x86_64/shiny-server-1.5.16.958-amd64.deb > /tmp/rshiny.deb && \
+	apt-get install -y /tmp/rshiny.deb && \
+	rm /tmp/rshiny.deb
 
 # Cleanup
 RUN rm -rf $CONDA_DIR/share/jupyter/lab/staging && \
-    rm -rf /home/$NB_USER/.cache/yarn && \
-    apt-get -qq purge && \
-    apt-get -qq clean && \
-    rm -rf /var/lib/apt/lists/*
+	rm -rf /home/$NB_USER/.cache/yarn && \
+	apt-get -qq purge && \
+	apt-get -qq clean && \
+	rm -rf /var/lib/apt/lists/*
 
 USER $NB_UID
 
 # Final cleaning
 # build and clean up (for good measure)
 RUN  npm cache clean --force && \
-    rm -rf /home/$NB_USER/.node-gyp
+	rm -rf /home/$NB_USER/.node-gyp
 
 RUN conda clean --all -f -y && \
-    fix-permissions $CONDA_DIR && \
-    fix-permissions /home/$NB_USER
+	fix-permissions $CONDA_DIR && \
+	fix-permissions /home/$NB_USER
 
 USER $NB_UID
-CMD R
+# CMD R

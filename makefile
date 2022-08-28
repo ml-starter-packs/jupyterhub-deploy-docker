@@ -63,4 +63,8 @@ notebook_image: pull singleuser/Dockerfile
 build: check-files network volumes secrets/oauth.env secrets/postgres.env
 	docker-compose build
 
+r_image:
+	docker build -t r-image:latest -f singleuser/Dockerfile-R singleuser
+
 .PHONY: network volumes check-files pull notebook_image build
+
