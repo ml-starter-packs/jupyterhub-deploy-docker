@@ -82,6 +82,7 @@ c.NotebookApp.allow_remote_access = True
 ENABLE_DROPDOWN = True
 IMAGE_WHITELIST= {
     'default': f"{HUB_NAME}-user",
+    'rstudio+shiny': "r-image",
     'scipy-notebook': "jupyter/scipy-notebook", 
     'tensorflow-notebook': "jupyter/tensorflow-notebook",
     'r-notebook': 'jupyter/r-notebook',
