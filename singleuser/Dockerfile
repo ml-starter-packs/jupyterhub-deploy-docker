@@ -30,13 +30,9 @@ RUN \
     fix-permissions $CONDA_DIR && \
     fix-permissions /home/$NB_USER
 
-USER root
-COPY install_vscode.sh /tmp/
-RUN /tmp/install_vscode.sh
-
 USER $NB_UID
 # RUN mamba install xeus-python -y
-RUN pip install jupyter_server_proxy jupyterlab-miami-nights
+RUN pip install jupyter_server_proxy
 RUN pip install black flake8 autopep8 isort pre-commit
 
 COPY install_jupyter_nbextensions.sh /tmp/
@@ -66,3 +62,17 @@ RUN echo "export PAGER=less" >> /home/$NB_USER/.bashrc
 
 # remember git login credentials
 RUN git config --global credential.helper "cache --timeout 144000"
+
+USER root
+COPY install_vscode.sh /tmp/
+RUN /tmp/install_vscode.sh
+
+USER $NB_UID
+RUN mkdir -p /home/$NB_USER/.local/share/code-server/User/
+RUN code-server --install-extension ms-python.python
+RUN code-server --install-extension ms-toolsai.jupyter
+RUN code-server --install-extension hookyqr.beautify
+RUN code-server --install-extension eamodio.gitlens
+RUN code-server --install-extension mechatroner.rainbow-csv
+# RUN code-server --install-extension golang.go
+RUN echo '{ "python.defaultInterpreterPath": "conda", "telemetry.enableTelemetry": false, "telemetry.telemetryLevel": "off",}' > /home/$NB_USER/.local/share/code-server/User/settings.json
