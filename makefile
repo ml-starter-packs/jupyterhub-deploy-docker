@@ -21,6 +21,9 @@ secrets/oauth.env:
 	@mkdir -p secrets/
 	@echo "Generating hash key in $@"
 	@echo "HASH_SECRET_KEY=$(shell openssl rand -hex 32)" > $@
+	@echo "OAUTH_CLIENT_SECRET=" >> $@
+	@echo "OAUTH_CLIENT_ID=" >> $@
+	@echo "OAUTH_CALLBACK_URL=" >> $@
 
 login:
 	@docker run --rm $(HUB_NAME) hashauthpw --length $(PASSWORD_LENGTH) $(USERNAME) $(HASH_SECRET_KEY)
