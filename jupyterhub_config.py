@@ -117,7 +117,7 @@ class MyDockerSpawner(DockerSpawner):
         NOTE: If the check was based on username rather than image name,
         this would not be required (but then GPUs are attached per-user)
         """
-        image = self.user_options.get('image', '')
+        image = self.user_options.get('image')
         if image:
             allowed_images = self._get_allowed_images()
             if allowed_images:
@@ -192,8 +192,7 @@ class MyDockerSpawner(DockerSpawner):
 
 c.JupyterHub.spawner_class = MyDockerSpawner
 
-# c.DockerSpawner.image = '%s-user'%HUB_NAME
-c.DockerSpawner.image = ''
+c.DockerSpawner.image = '%s-user'%HUB_NAME
 c.DockerSpawner.name_template = '%s-{username}-{servername}-{imagename}'%HUB_NAME
 if ENABLE_DROPDOWN:
     c.DockerSpawner.allowed_images = IMAGE_WHITELIST
