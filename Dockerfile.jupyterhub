@@ -8,7 +8,7 @@ RUN pip install psycopg2-binary~=2.7 && \
     pip install --no-cache-dir \
         oauthenticator==0.8.*
 
-RUN pip install jupyterhub-hashauthenticator dockerspawner~=12.0
+RUN pip install jupyterhub-hashauthenticator dockerspawner==12.1.0
 RUN pip install jupyterhub-idle-culler
     
 # Copy TLS certificate and key
