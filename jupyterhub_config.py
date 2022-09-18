@@ -83,13 +83,16 @@ ENABLE_DROPDOWN = True
 IMAGE_WHITELIST= {
     'default': f"{HUB_NAME}-user",
     'gpu': f"{HUB_NAME}-gpu-user",
-    'rstudio+shiny': "r-image",
-    'scipy-notebook': "jupyter/scipy-notebook", 
-    'tensorflow-notebook': "jupyter/tensorflow-notebook",
-    'r-notebook': 'jupyter/r-notebook',
-    'base-notebook': "jupyter/base-notebook",
+    'RStudio & Shiny': "r-image",
 }
 
+def default_url_fn(handler):
+    user = handler.current_user
+    if user and user.admin:
+        return '/hub/admin'
+    return '/hub/home'
+
+c.JupyterHub.default_url = default_url_fn
 
 # Spawn single-user servers as Docker containers
 from dockerspawner import DockerSpawner
@@ -191,7 +194,6 @@ class MyDockerSpawner(DockerSpawner):
             { 'bind': f'/home/{username}/jupyterhub_config.py', 'mode': 'rw' }
 
 c.JupyterHub.spawner_class = MyDockerSpawner
-
 c.DockerSpawner.image = '%s-user'%HUB_NAME
 c.DockerSpawner.name_template = '%s-{username}-{servername}-{imagename}'%HUB_NAME
 if ENABLE_DROPDOWN:
