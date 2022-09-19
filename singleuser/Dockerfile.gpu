@@ -3,6 +3,13 @@ FROM $DOCKER_NOTEBOOK_IMAGE
 ARG JUPYTERHUB_VERSION
 
 USER root
+RUN apt-key del 7fa2af80 && \
+	cd /tmp/ && \
+	wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2004/x86_64/cuda-keyring_1.0-1_all.deb && \
+	dpkg -i cuda-keyring_1.0-1_all.deb && \
+	rm cuda-keyring_1.0-1_all.deb && \
+	sed -i '/developer\.download\.nvidia\.com\/compute\/cuda\/repos/d' /etc/apt/sources.list && \
+	rm -f /etc/apt/sources.list.d/cuda*.list /etc/apt/sources.list.d/nvidia-ml.list
 
 RUN apt-get update && \
 	apt-get install -y --no-install-recommends \

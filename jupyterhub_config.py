@@ -82,13 +82,17 @@ c.NotebookApp.allow_remote_access = True
 ENABLE_DROPDOWN = True
 IMAGE_WHITELIST= {
     'default': f"{HUB_NAME}-user",
-    'rstudio+shiny': "r-image",
-    'scipy-notebook': "jupyter/scipy-notebook", 
-    'tensorflow-notebook': "jupyter/tensorflow-notebook",
-    'r-notebook': 'jupyter/r-notebook',
-    'base-notebook': "jupyter/base-notebook",
+    'gpu': f"{HUB_NAME}-gpu-user",
+    'RStudio & Shiny': "r-image",
 }
 
+def default_url_fn(handler):
+    user = handler.current_user
+    if user and user.admin:
+        return '/hub/admin'
+    return '/hub/home'
+
+c.JupyterHub.default_url = default_url_fn
 
 # Spawn single-user servers as Docker containers
 from dockerspawner import DockerSpawner
@@ -100,23 +104,70 @@ class MyDockerSpawner(DockerSpawner):
         #     self.mount_config_files()
         #     self.grant_sudo()
         # self.limit_resources()
-        self.enable_lab()
+        self.update_image_name()
         self.grant_sudo()  # grants sudo to all users!!!
+        self.grant_gpu()
+        # self.enable_lab()
         return super().start()
+
+
+    def update_image_name(self):
+        """
+        Updates the image name from dropdown list (if exists).
+        This is required because the `self.start()` method
+        updates it but we need access to the variable `self.image`
+        prior to startup in order to set extra_host_config (for gpus).
+        NOTE: If the check was based on username rather than image name,
+        this would not be required (but then GPUs are attached per-user)
+        """
+        image = self.user_options.get('image')
+        if image:
+            allowed_images = self._get_allowed_images()
+            if allowed_images:
+                if image not in allowed_images:
+                    raise web.HTTPError(
+                        400,
+                        "Image %s not in allowed list: %s" % (image, ', '.join(allowed_images)),
+                    )
+                else:
+                    image = allowed_images[image]
+
+        self.image = image
+
+        if self.image in (f"{HUB_NAME}-user", f"{HUB_NAME}-gpu-user"):
+            self.environment["VSCODE"] = "1"
+
+        if self.image == "r-image":
+            self.environment["RSTUDIO"] = "1"
 
     def grant_sudo(self):
         """
         Grants sudo permission to current user being spawned.
         """
         self.environment['GRANT_SUDO'] = "1"
-        self.extra_create_kwargs = {'user': 'root'}
-    
+        self.extra_create_kwargs.update({"user": "root"})
+
+    def grant_gpu(self):
+        if "gpu" in self.image:
+            import docker
+            self.extra_host_config.update({
+                "device_requests": [
+                    docker.types.DeviceRequest(
+                    count=-1,
+                    capabilities=[["gpu"]],
+                    driver="nvidia",
+                    options={"--gpus":"all"}
+                    )],
+            })
+
     def enable_lab(self):
         """
         Sets Jupyterlab as the default environment which users see.
+        WARNING: Will not work if ~/.jupyter/jupyter_notebook_config.py exists.
         """
         self.environment['JUPYTER_ENABLE_LAB'] = 'yes'
         self.default_url = '/lab'
+        # self.notebook_dir = '/home/jovyan/work'
 
     def update_volumes(self, group_list):
         for group_id in group_list:
@@ -168,7 +219,7 @@ c.DockerSpawner.extra_host_config = { 'network_mode': network_name }
 # user `jovyan`, and set the notebook directory to `/home/jovyan/work`.
 # We follow the same convention.
 notebook_dir = os.environ.get('DOCKER_NOTEBOOK_DIR') or '/home/jovyan/work'
-#c.DockerSpawner.notebook_dir = notebook_dir
+# c.DockerSpawner.notebook_dir = notebook_dir
 # Mount the real user's Docker volume on the host to the notebook user's
 # notebook directory in the container
 c.DockerSpawner.volumes = { 'hub-user-{username}': notebook_dir }
@@ -185,7 +236,8 @@ c.DockerSpawner.debug = True
 # User containers will access hub by container name on the Docker network
 c.JupyterHub.hub_ip = HUB_NAME
 # The hub will be hosted at example.com/HUB_NAME/ 
-c.JupyterHub.base_url = u'/%s/'%HUB_NAME
+# c.JupyterHub.base_url = u'/%s/'%HUB_NAME
+c.JupyterHub.base_url = u'/'
 #c.JupyterHub.hub_port = 8001
 
 ## Authentication 
@@ -236,7 +288,7 @@ c.JupyterHub.db_url = 'postgresql://postgres:{password}@{host}/{db}'.format(
 
 
 # https://github.com/jupyterhub/jupyterhub-idle-culler
-if os.environ['CULL_IDLE']:
+if os.environ['CULL_IDLE'] == "true":
     c.JupyterHub.services = [
         {
             "name": "jupyterhub-idle-culler-service",

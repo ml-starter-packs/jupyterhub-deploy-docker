@@ -61,6 +61,12 @@ notebook_image: pull singleuser/Dockerfile
 		--build-arg DOCKER_NOTEBOOK_IMAGE=$(DOCKER_NOTEBOOK_IMAGE) \
 		singleuser
 
+gpu_notebook_image: singleuser/Dockerfile.gpu
+	docker build -t $(HUB_NAME)-gpu-user:latest -f singleuser/Dockerfile.gpu \
+		--build-arg JUPYTERHUB_VERSION=$(JUPYTERHUB_VERSION) \
+		--build-arg DOCKER_NOTEBOOK_IMAGE=cschranz/gpu-jupyter:v1.4_cuda-11.2_ubuntu-20.04_slim \
+		singleuser
+
 build: check-files network volumes secrets/oauth.env secrets/postgres.env
 	docker-compose build
 
