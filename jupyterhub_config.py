@@ -137,22 +137,6 @@ class MyDockerSpawner(DockerSpawner):
         if self.image in (f"{HUB_NAME}-user", f"{HUB_NAME}-gpu-user"):
             self.default_url = "/vscode"
             self.environment["VSCODE"] = "1"  # show icon
-            c.ServerProxy.servers = {
-                'vscode': {
-                     'command': [
-                               'code-server',
-                               '--auth', 'none',
-                               '--bind-addr', '0.0.0.0',
-                               '--port', '5000'
-                       ],
-                     'port': 5000,
-                     'absolute_url': False,
-                     'new_browser_tab': True,
-                     'launcher_entry': {
-                         'title': 'VSCode',
-                      },
-                }
-            }
 
         if self.image == f"{HUB_NAME}-r-user":
             self.default_url = "/rstudio"
