@@ -86,19 +86,6 @@ RUN apt-get -yqq update && \
 	apt-get -qq clean
 
 ENV PATH=$PATH:/usr/lib/rstudio-server/bin
-# I do not think these are necessary
-#RUN apt-get update && \
-#	apt-get install -y --no-install-recommends \
-#		libapparmor1 \
-#		libedit2 \
-#		lsb-release \
-#		psmisc \
-#		libssl1.0.0 \
-#		;
-
-# RUN curl https://download3.rstudio.org/ubuntu-14.04/x86_64/shiny-server-1.5.16.958-amd64.deb > /tmp/rshiny.deb && \
-#	apt-get install -y /tmp/rshiny.deb && \
-#	rm /tmp/rshiny.deb
 
 USER root
 # Cleanup
@@ -124,12 +111,10 @@ USER root
 ## CONFIG
 # Copy over config which creates launcher icons in jupyterlab
 COPY jupyter_notebook_config.py /home/$NB_USER/.jupyter/
-COPY jupyter_server_config.py /home/$NB_USER/.jupyter/
 RUN mkdir -p /home/$NB_USER/.jupyter/lab/workspaces/
 COPY ./jupyterlab_settings /home/$NB_USER/.jupyter/lab/user-settings/@jupyterlab
 RUN chown -R $NB_USER:$NB_GUID /home/$NB_USER/.jupyter/lab
 
 USER $NB_UID
-# RUN python3 -m pip install jupyter-rsession-proxy jupyter_server_proxy
 # RUN python3 -m pip install jupyter-rsession-proxy jupyter_server_proxy
 RUN python3 -m pip install git+https://github.com/ryanlovett/jupyter-rsession-proxy@95759d85e95de6cb102702762d23f74ae2d46baa
