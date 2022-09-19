@@ -67,9 +67,10 @@ USER root
 ## CONFIG
 # Copy over config which creates launcher icons in jupyterlab
 COPY jupyter_notebook_config.py /home/$NB_USER/.jupyter/
+COPY jupyter_server_config.py /home/$NB_USER/.jupyter/
 RUN mkdir -p /home/$NB_USER/.jupyter/lab/workspaces/
 COPY ./jupyterlab_settings /home/$NB_USER/.jupyter/lab/user-settings/@jupyterlab
-RUN chown -R $NB_USER:$NB_GUID /home/$NB_USER/.jupyter/lab
+RUN chown -R $NB_USER:$NB_GUID /home/$NB_USER/.jupyter
 USER $NB_UID
 
 # USER SETTINGS
