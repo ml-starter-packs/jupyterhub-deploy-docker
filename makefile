@@ -55,6 +55,9 @@ check-files: userlist secrets/postgres.env
 pull:
 	docker pull $(DOCKER_NOTEBOOK_IMAGE)
 
+pull_r:
+	docker pull docker.io/jupyter/r-notebook:hub-$(JUPYTERHUB_VERSION)
+
 notebook_image: pull singleuser/Dockerfile
 	docker build -t $(HUB_NAME)-user:latest \
 		--build-arg JUPYTERHUB_VERSION=$(JUPYTERHUB_VERSION) \
@@ -70,8 +73,11 @@ gpu_notebook_image: singleuser/Dockerfile.gpu
 build: check-files network volumes secrets/oauth.env secrets/postgres.env
 	docker-compose build
 
-r_image:
-	docker build -t r-image:latest -f singleuser/Dockerfile-R singleuser
+r_image: pull_r singleuser/Dockerfile-R
+	docker build -t $(HUB_NAME)-r-user:latest \
+		-f singleuser/Dockerfile-R \
+		--build-arg JUPYTERHUB_VERSION=$(JUPYTERHUB_VERSION) \
+		singleuser
 
 .PHONY: network volumes check-files pull notebook_image build
 

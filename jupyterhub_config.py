@@ -83,7 +83,7 @@ ENABLE_DROPDOWN = True
 IMAGE_WHITELIST= {
     'default': f"{HUB_NAME}-user",
     'gpu': f"{HUB_NAME}-gpu-user",
-    'RStudio & Shiny': "r-image",
+    'RStudio & Shiny': f"{HUB_NAME}-r-user",
 }
 
 def default_url_fn(handler):
@@ -135,10 +135,11 @@ class MyDockerSpawner(DockerSpawner):
         self.image = image
 
         if self.image in (f"{HUB_NAME}-user", f"{HUB_NAME}-gpu-user"):
-            self.environment["VSCODE"] = "1"
+            self.default_url = "/vscode"
+            self.environment["VSCODE"] = "1"  # show icon
 
-        if self.image == "r-image":
-            self.environment["RSTUDIO"] = "1"
+        if self.image == f"{HUB_NAME}-r-user":
+            self.default_url = "/rstudio"
 
     def grant_sudo(self):
         """
@@ -165,8 +166,8 @@ class MyDockerSpawner(DockerSpawner):
         Sets Jupyterlab as the default environment which users see.
         WARNING: Will not work if ~/.jupyter/jupyter_notebook_config.py exists.
         """
-        self.environment['JUPYTER_ENABLE_LAB'] = 'yes'
-        self.default_url = '/lab'
+        self.default_url = '/lab'  # seems to actually work now
+        # self.default_url = '/tree'
         # self.notebook_dir = '/home/jovyan/work'
 
     def update_volumes(self, group_list):

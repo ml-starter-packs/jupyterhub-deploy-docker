@@ -54,22 +54,25 @@ RUN /tmp/install_vscode.sh
 
 USER $NB_UID
 RUN mkdir -p /home/$NB_USER/.local/share/code-server/User/
+RUN mkdir -p /home/$NB_USER/.vscode/
 RUN code-server --install-extension ms-python.python
 RUN code-server --install-extension ms-toolsai.jupyter
 RUN code-server --install-extension hookyqr.beautify
 RUN code-server --install-extension eamodio.gitlens
 RUN code-server --install-extension mechatroner.rainbow-csv
 # RUN code-server --install-extension golang.go
-RUN echo '{ "python.defaultInterpreterPath": "conda", "telemetry.enableTelemetry": false, "telemetry.telemetryLevel": "off",}' > /home/$NB_USER/.local/share/code-server/User/settings.json
+RUN echo '{ "python.defaultInterpreterPath": "/opt/conda/bin/python",}' > /home/$NB_USER/.vscode/settings.json
+RUN echo '{ "telemetry.telemetryLevel": "off",}' > /home/$NB_USER/.local/share/code-server/User/settings.json
 
 
 USER root
 ## CONFIG
 # Copy over config which creates launcher icons in jupyterlab
 COPY jupyter_notebook_config.py /home/$NB_USER/.jupyter/
+COPY jupyter_server_config.py /home/$NB_USER/.jupyter/
 RUN mkdir -p /home/$NB_USER/.jupyter/lab/workspaces/
 COPY ./jupyterlab_settings /home/$NB_USER/.jupyter/lab/user-settings/@jupyterlab
-RUN chown -R $NB_USER:$NB_GUID /home/$NB_USER/.jupyter/lab
+RUN chown -R $NB_USER:$NB_GUID /home/$NB_USER/.jupyter
 USER $NB_UID
 
 # USER SETTINGS
